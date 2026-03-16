@@ -1,167 +1,155 @@
-# Robinhood MCP Server
+# Robinhood Tools
 
-A read-only MCP (Model Context Protocol) server wrapping the [robin-stocks](https://github.com/jmfernandes/robin_stocks) (unofficial) Robinhood API.
+A monorepo providing CLI and MCP access to the [robin-stocks](https://github.com/jmfernandes/robin_stocks) (unofficial) Robinhood API.
 
-## Features
+## Packages
 
-- **Read-only access**: Market data, options, portfolio, watchlists, news, and fundamentals
-- **Normalized schemas**: Consistent, typed responses with numeric coercion and ISO 8601 timestamps
-- **Biometric-friendly auth**: Works with app-based authentication flow (no MFA code needed)
-- **Lazy authentication**: Authenticates on first tool call, not at startup
-- **Session caching**: Persists sessions to disk via robin-stocks pickle files for faster reconnects
+| Package | Description |
+|---------|-------------|
+| `robinhood-core` | Shared library: client, models, services |
+| `robinhood-cli` | CLI tool (`rh` command) for terminal access |
+| `robinhood-mcp` | MCP server for AI assistants (Claude, OpenCode, etc.) |
 
 ## Quick Start
 
-Add to your OpenCode config (`~/.config/opencode/opencode.json` or project-level `opencode.json`):
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "robinhood": {
-      "type": "local",
-      "command": [
-        "uvx",
-        "--from", "git+https://github.com/ach968/robinhood-mcp.git",
-        "robinhood-mcp",
-        "--username", "your_robinhood_username",
-        "--password", "your_robinhood_password"
-      ],
-      "enabled": true
-    }
-  }
-}
-```
-
-This uses [`uvx`](https://docs.astral.sh/uv/concepts/tools/) to run the server
-directly from GitHub without cloning or installing anything manually.
-
-### With session caching
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "robinhood": {
-      "type": "local",
-      "command": [
-        "uvx",
-        "--from", "git+https://github.com/ach968/robinhood-mcp.git",
-        "robinhood-mcp",
-        "--username", "your_robinhood_username",
-        "--password", "your_robinhood_password",
-        "--session-path", "/path/to/session/directory"
-      ],
-      "enabled": true
-    }
-  }
-}
-```
-
-> **Note:** `--session-path` specifies a **directory** where robin-stocks stores its
-> `robinhood.pickle` session file, not a file path.
-
-### CLI Arguments
-
-| Arg | Env Fallback | Description |
-|-----|-------------|-------------|
-| `--username` | `RH_USERNAME` | Robinhood username |
-| `--password` | `RH_PASSWORD` | Robinhood password |
-| `--session-path` | `RH_SESSION_PATH` | Directory for session pickle file |
-| `--allow-mfa` | `RH_ALLOW_MFA=1` | Enable MFA code fallback (off by default) |
-
-CLI args take priority over environment variables. You can also pass credentials
-via the `environment` block instead of inline args:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "robinhood": {
-      "type": "local",
-      "command": [
-        "uvx",
-        "--from", "git+https://github.com/ach968/robinhood-mcp.git",
-        "robinhood-mcp"
-      ],
-      "environment": {
-        "RH_USERNAME": "your_username",
-        "RH_PASSWORD": "your_password"
-      },
-      "enabled": true
-    }
-  }
-}
-```
-
-## Installation (for development)
+### CLI
 
 ```bash
+# Install
+cd robinhood-cli
+uv pip install -e .
+
+# Login (prompts for username/password)
+rh login
+
+# Use
+rh price AAPL MSFT
+rh quote TSLA
+rh portfolio
+rh positions
+rh options-chain SPY --expiry 2026-06-20 --type call
+rh history AAPL --interval day --span month
+rh orders --type stock --since 2026-01-01
+rh watchlists
+rh news NVDA
+rh fundamentals AMD
+rh status
+rh logout
+```
+
+All commands support `--json` for raw JSON output.
+
+### MCP Server
+
+Add to your OpenCode config (`~/.config/opencode/opencode.json`):
+
+```json
+{
+  "mcp": {
+    "robinhood": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "--from", "git+https://github.com/ach968/robinhood-mcp.git",
+        "robinhood-mcp",
+        "--username", "your_username",
+        "--password", "your_password"
+      ],
+      "enabled": true
+    }
+  }
+}
+```
+
+See [robinhood-mcp/README.md](robinhood-mcp/README.md) for full MCP documentation.
+
+## Development
+
+```bash
+# Clone
 git clone https://github.com/ach968/robinhood-mcp.git
 cd robinhood-mcp
-pip install -e ".[dev]"
+
+# Install all packages
+cd robinhood-core && uv pip install -e ".[dev]"
+cd ../robinhood-cli && uv pip install -e ".[dev]"
+cd ../robinhood-mcp && uv pip install -e ".[dev]"
+
+# Run tests
+cd robinhood-core && uv run pytest tests/ -v
+cd ../robinhood-cli && uv run pytest tests/ -v
+cd ../robinhood-mcp && uv run pytest tests/ -v
 ```
 
-## Available Tools
+## CLI Commands
 
-### Market Data
-- `robinhood.market.current_price` - Get current price quotes for one or more symbols
-- `robinhood.market.price_history` - Get historical OHLCV data (intervals: 5min, 10min, hour, day, week)
-- `robinhood.market.quote` - Get detailed quotes with previous close and change percent
+| Command | Description |
+|---------|-------------|
+| `rh login` | Authenticate with Robinhood |
+| `rh logout` | Clear saved session |
+| `rh status` | Show authentication status |
+| `rh price SYMBOLS...` | Current prices |
+| `rh quote SYMBOLS...` | Detailed quotes with change |
+| `rh history SYMBOL` | Historical OHLCV data |
+| `rh portfolio` | Portfolio summary |
+| `rh positions` | Open stock positions |
+| `rh options-chain SYMBOL` | Options chain |
+| `rh options-positions` | Open options positions |
+| `rh watchlists` | List watchlists |
+| `rh news SYMBOL` | Latest news |
+| `rh fundamentals SYMBOL` | Company fundamentals |
+| `rh orders` | Order history |
 
-### Options
-- `robinhood.options.chain` - Get options chain for a symbol (calls and puts with greeks)
+All commands accept `--json` for machine-readable output.
 
-### Orders
-- `robinhood.orders.history` - Get order history for stocks, options, and/or crypto (execution details, prices, timestamps)
+## MCP Tools
 
-### Portfolio
-- `robinhood.portfolio.summary` - Portfolio equity, cash, buying power, and day change
-- `robinhood.portfolio.positions` - Current positions with market value and unrealized P&L
+| Tool | Description |
+|------|-------------|
+| `robinhood.market.current_price` | Current price quotes |
+| `robinhood.market.price_history` | Historical OHLCV data |
+| `robinhood.market.quote` | Detailed quotes |
+| `robinhood.options.chain` | Options chain |
+| `robinhood.orders.history` | Order history |
+| `robinhood.portfolio.summary` | Portfolio summary |
+| `robinhood.portfolio.positions` | Current positions |
+| `robinhood.watchlists.list` | Watchlists |
+| `robinhood.news.latest` | Latest news |
+| `robinhood.fundamentals.get` | Company fundamentals |
+| `robinhood.auth.status` | Auth status |
 
-### Watchlists
-- `robinhood.watchlists.list` - List all watchlists with their symbols
+## Architecture
 
-### News
-- `robinhood.news.latest` - Get latest news for a stock symbol (symbol required)
-
-### Fundamentals
-- `robinhood.fundamentals.get` - Company fundamentals (market cap, P/E, dividend yield, 52-week range)
-
-### Auth
-- `robinhood.auth.status` - Check whether the session is authenticated
-
-## Authentication Flow
-
-1. The server starts without attempting login
-2. On first tool call, robin-stocks tries to restore a cached session from the pickle file
-3. If the cached session is valid, it is used without any interaction
-4. If no valid session exists, it attempts a fresh login with credentials
-5. If Robinhood requires a challenge and MFA is disabled, it returns an `AUTH_REQUIRED` error
-6. To resolve: approve the login in the Robinhood app, then retry the tool call
-
-## Testing
-
-Unit tests:
-```bash
-pytest tests/unit -v
 ```
+robinhood-core/           # Shared library
+├── robinhood_core/
+│   ├── client.py         # RobinhoodClient (robin-stocks wrapper)
+│   ├── errors.py         # Exception types
+│   ├── models/           # Pydantic models
+│   └── services/         # Business logic services
 
-Integration tests (requires credentials):
-```bash
-RH_INTEGRATION=1 pytest tests/integration -v
+robinhood-cli/            # CLI tool
+├── robinhood_cli/
+│   ├── main.py           # Typer app entry point
+│   ├── auth.py           # Session management
+│   ├── output.py         # Rich formatting helpers
+│   └── commands/         # Command modules
+
+robinhood-mcp/            # MCP server
+├── robin_stocks_mcp/
+│   └── server.py         # MCP tool implementations
 ```
 
 ## Security Notes
 
-- This server is **read-only** and cannot place orders or modify your account
-- Credentials are passed via CLI args or environment variables
-- Session tokens are cached as pickle files (optional, user-controlled path)
+- All tools are **read-only** — cannot place orders or modify accounts
+- CLI stores session tokens in `~/.config/robinhood/` (pickle file + config)
+- MCP accepts credentials via CLI args or environment variables
 - Passwords and tokens are never logged
 
 ## Disclaimer
 
-This project uses [robin-stocks](https://github.com/jmfernandes/robin_stocks), an unofficial Python library for interacting with the Robinhood API. It is not affiliated with, endorsed by, or connected to Robinhood Markets, Inc. in any way. The Robinhood API is not officially documented or supported for third-party use. Use this software at your own risk and discretion. API behavior may change without notice, which could cause unexpected breakage.
+This project uses [robin-stocks](https://github.com/jmfernandes/robin_stocks), an unofficial Python library. It is not affiliated with or endorsed by Robinhood Markets, Inc. Use at your own risk.
 
 ## License
 
