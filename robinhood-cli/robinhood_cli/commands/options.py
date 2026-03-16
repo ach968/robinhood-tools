@@ -5,7 +5,7 @@ from rich.table import Table
 
 from robinhood_core.services.options import OptionsService
 from robinhood_cli.auth import get_client
-from robinhood_cli.output import console, format_currency, print_json, DIM
+from robinhood_cli.output import console, format_currency, print_json
 
 
 def _contract_to_row(c) -> list:
