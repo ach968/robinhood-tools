@@ -353,11 +353,10 @@ def test_ensure_session_tries_pickle_when_no_credentials():
         client = RobinhoodClient(session_path="/tmp/fake_session")
         client.ensure_session()
         assert client._authenticated is True
+        # Note: store_session=True is required for robin_stocks to load from pickle
         mock_login.assert_called_once_with(
-            username="",
-            password="",
             pickle_path="/tmp/fake_session",
-            store_session=False,
+            store_session=True,
         )
 
 

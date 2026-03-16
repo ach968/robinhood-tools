@@ -61,14 +61,13 @@ class RobinhoodClient:
         if not self._username or not self._password:
             # When no credentials are provided, try to restore from a saved pickle.
             # robin_stocks will use the stored token if still valid.
+            # Note: store_session must be True for robin_stocks to load from pickle.
             if self._session_path:
                 try:
                     logger.debug("No credentials provided, trying saved session at %s", self._session_path)
                     login_result = rh.login(
-                        username="",
-                        password="",
                         pickle_path=self._session_path,
-                        store_session=False,
+                        store_session=True,
                     )
                     if login_result:
                         self._authenticated = True
